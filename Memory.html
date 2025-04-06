@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Brainrot Memory Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(145deg, #ecf0f1, #bdc3c7);
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-top: 30px;
+      color: #34495e;
+    }
+
+    p {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    #login-container,
+    #game-container {
+      background-color: white;
+      padding: 30px;
+      margin: 30px auto;
+      border-radius: 15px;
+      max-width: 600px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 1rem;
+      width: 60%;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 25px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .memory-board {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      gap: 15px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+
+    .memory-card {
+      width: 100px;
+      height: 100px;
+      background-color: #2c3e50;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .memory-card:hover {
+      transform: scale(1.05);
+    }
+
+    .memory-card img {
+      width: 80px;
+      height: 80px;
+      display: none;
+      border-radius: 5px;
+    }
+
+    .flipped img {
+      display: block;
+    }
+
+    .matched {
+      background-color: #27ae60 !important;
+      pointer-events: none;
+    }
+
+    #playerInfo {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #leaderboard {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #leaderboard li {
+      background-color: #f4f4f4;
+      margin: 5px auto;
+      padding: 10px 15px;
+      max-width: 300px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #leaderboard li:first-child {
+      background-color: #f39c12;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Brainrot Memory Game</h1>
+  <p>Abbina tutte le coppie di carte!</p>
+
+  <!-- Login -->
+  <div id="login-container">
+    <input type="text" id="username" placeholder="Inserisci il tuo nome" />
+    <br />
+    <!-- Selettore difficoltà -->
+    <select id="difficulty">
+      <option value="easy">Facile</option>
+      <option value="medium">Medio</option>
+      <option value="hard">Difficile</option>
+    </select>
+    <br /><br />
+    <button onclick="startLogin()">Inizia</button>
+  </div>
+
+  <!-- Gioco -->
+  <div id="game-container" style="display: none;">
+    <div class="memory-board" id="memoryBoard"></div>
+    <button onclick="startGame()">🔄 Nuova Partita</button>
+    <p id="playerInfo"></p>
+    <h3>🏆 Classifica Migliori Giocatori</h3>
+    <ol id="leaderboard"></ol>
+  </div>
+
+  <script>
+    const baseImages = [
+      'https://static.wikia.nocookie.net/d4e8da5f-c25a-44c2-a6df-21b5be15da96/scale-to-width/755',
+      'https://static.wikia.nocookie.net/d4e8da5f-c25a-44c2-a6df-21b5be15da96/scale-to-width/755',
+      'https://static.wikia.nocookie.net/brainrotnew/images/f/f7/Brr_Brr_Patapim.png',
+      'https://static.wikia.nocookie.net/brainrotnew/images/f/f7/Brr_Brr_Patapim.png',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhQKI-ni3cBKAURCooskFjH40GhGll1N6Ulw&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhQKI-ni3cBKAURCooskFjH40GhGll1N6Ulw&s',
+      'https://static.wikia.nocookie.net/brainrotnew/images/f/f0/Trippi_Troppi.png',
+      'https://static.wikia.nocookie.net/brainrotnew/images/f/f0/Trippi_Troppi.png',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaY8ZqwjaCXx9dAO_ZEgAChJN1vQPsdDs5iw&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaY8ZqwjaCXx9dAO_ZEgAChJN1vQPsdDs5iw&s',
+      'https://images.cults3d.com/vtOPCJa6D14xx0pDTggLPxxq9NE=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/1490d2dd-b7f3-4ff0-a99a-9954fbe1fb59/hq2.jpg',
+      'https://images.cults3d.com/vtOPCJa6D14xx0pDTggLPxxq9NE=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/1490d2dd-b7f3-4ff0-a99a-9954fbe1fb59/hq2.jpg'
+    ];
+
+    const mediumExtra = [
+      'https://images.cults3d.com/_luWXllf5FM5EbbDzmF-VIae1Vs=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/31101980/illustration-file/742d4826-51ab-47cb-87b4-0779a5b574f6/tralalero.jpg',
+      'https://images.cults3d.com/_luWXllf5FM5EbbDzmF-VIae1Vs=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/31101980/illustration-file/742d4826-51ab-47cb-87b4-0779a5b574f6/tralalero.jpg',
+      'https://external-preview.redd.it/lirili-larila-english-version-v0-MG1sMm00eGVzZnJlMSbjd8FfN3akvFp_qQW5Af2aCQQCDVVw0tkRsZMaiuR1.png?format=pjpg&auto=webp&s=b41c3c25065982a14cffb36953ceaa43d5729c6c',
+      'https://external-preview.redd.it/lirili-larila-english-version-v0-MG1sMm00eGVzZnJlMSbjd8FfN3akvFp_qQW5Af2aCQQCDVVw0tkRsZMaiuR1.png?format=pjpg&auto=webp&s=b41c3c25065982a14cffb36953ceaa43d5729c6c',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTmIuRGKGrRQHFhcIKxzLz6cYtWCKhjZaidw&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTmIuRGKGrRQHFhcIKxzLz6cYtWCKhjZaidw&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHeZhX4WxwuahuNk0oKi70vJaK3l051A9RPw&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHeZhX4WxwuahuNk0oKi70vJaK3l051A9RPw&s'
+    ];
+
+    const hardExtra = [
+      'https://images.cults3d.com/PFe_MB022TW1rqbbEJ-rMDxEI5U=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/7fe58306-2cf8-4a0e-8e4f-eaf8509f064a/e16119a4ab4b4adca255d70e4f0fcb11H3000W3000_464_464.jpg',
+      'https://images.cults3d.com/PFe_MB022TW1rqbbEJ-rMDxEI5U=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/7fe58306-2cf8-4a0e-8e4f-eaf8509f064a/e16119a4ab4b4adca255d70e4f0fcb11H3000W3000_464_464.jpg',
+      'https://i1.sndcdn.com/artworks-4fPGk176hMQgdghK-zFMj5Q-t500x500.jpg',
+      'https://i1.sndcdn.com/artworks-4fPGk176hMQgdghK-zFMj5Q-t500x500.jpg',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnzJElfy2aN9oZYbixYs4x7cIb38hRgSncOA&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnzJElfy2aN9oZYbixYs4x7cIb38hRgSncOA&s',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3ZwF-s3LMQWCmRrhS1blv4v7XGECGXDcF-jjjMPM27Zq9QSg5AyNfWDWz8rzMRRe57Fc&usqp=CAU',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3ZwF-s3LMQWCmRrhS1blv4v7XGECGXDcF-jjjMPM27Zq9QSg5AyNfWDWz8rzMRRe57Fc&usqp=CAU'
+    ];
+
+    let flippedCards = [];
+    let matchedCards = [];
+    let moves = 0;
+    let playerName = '';
+    let difficulty = 'easy';
+    let playerRecord = localStorage.getItem('playerRecord') ? JSON.parse(localStorage.getItem('playerRecord')) : {};
+
+    let currentAudio = null;
+    let audioTimeout = null;
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function startLogin() {
+      playerName = document.getElementById('username').value.trim();
+      difficulty = document.getElementById('difficulty').value;
+      if (playerName) {
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        document.getElementById('playerInfo').innerHTML = `🎮 Giocatore: <strong>${playerName}</strong> | Record: ${playerRecord[playerName] ? playerRecord[playerName] + ' mosse' : 'Nessuno'}`;
+        startGame();
+        updateLeaderboard();
+      } else {
+        alert('Inserisci un nome per iniziare!');
+      }
+    }
+
+    function startGame() {
+      let imagesToUse = [...baseImages];
+      if (difficulty === 'medium') {
+        imagesToUse = imagesToUse.concat(mediumExtra);
+      } else if (difficulty === 'hard') {
+        imagesToUse = imagesToUse.concat(mediumExtra, hardExtra);
+      }
+
+      shuffle(imagesToUse);
+      flippedCards = [];
+      matchedCards = [];
+      moves = 0;
+
+      const board = document.getElementById('memoryBoard');
+      board.innerHTML = '';
+
+      imagesToUse.forEach((img, index) => {
+        const card = document.createElement('div');
+        card.classList.add('memory-card');
+        card.setAttribute('data-id', index);
+        card.setAttribute('data-image', img);
+        card.innerHTML = `<img src="${img}" alt="card" />`;
+        card.addEventListener('click', flipCard);
+        board.appendChild(card);
+      });
+    }
+
+    function flipCard() {
+      if (flippedCards.length === 2) return;
+      const card = this;
+      if (flippedCards.includes(card) || card.classList.contains('matched')) return;
+
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        clearTimeout(audioTimeout);
+      }
+
+      const imgSrc = card.getAttribute('data-image');
+      currentAudio = new Audio(getSoundForImage(imgSrc));
+      currentAudio.play();
+      audioTimeout = setTimeout(() => {
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+      }, 5000);
+
+      card.classList.add('flipped');
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) checkMatch();
+    }
+
+    function getSoundForImage(imageUrl) {
+      if (imageUrl.includes('https://static.wikia.nocookie.net/d4e8da5f-c25a-44c2-a6df-21b5be15da96/scale-to-width/755')) return 'SOUNI/tung-tung-tung-sahur.mp3';
+      if (imageUrl.includes('https://static.wikia.nocookie.net/brainrotnew/images/f/f7/Brr_Brr_Patapim.png')) return 'SOUNI/br-br-patapim.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhQKI-ni3cBKAURCooskFjH40GhGll1N6Ulw&s')) return 'SOUNI/glorbo_fruttodrillo_mixed.mp3';
+      if (imageUrl.includes('https://static.wikia.nocookie.net/brainrotnew/images/f/f0/Trippi_Troppi.png')) return 'SOUNI/trippi-troppi-troppa-trippa.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaY8ZqwjaCXx9dAO_ZEgAChJN1vQPsdDs5iw&s')) return 'SOUNI/47-frigo-camelo.mp3';
+      if (imageUrl.includes('https://images.cults3d.com/vtOPCJa6D14xx0pDTggLPxxq9NE=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/1490d2dd-b7f3-4ff0-a99a-9954fbe1fb59/hq2.jpg')) return 'SOUNI/boneka-ambalabu.mp3';
+      if (imageUrl.includes('https://images.cults3d.com/_luWXllf5FM5EbbDzmF-VIae1Vs=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/31101980/illustration-file/742d4826-51ab-47cb-87b4-0779a5b574f6/tralalero.jpg')) return 'SOUNI/trallalero-trallala.mp3';
+      if (imageUrl.includes('https://external-preview.redd.it/lirili-larila-english-version-v0-MG1sMm00eGVzZnJlMSbjd8FfN3akvFp_qQW5Af2aCQQCDVVw0tkRsZMaiuR1.png?format=pjpg&auto=webp&s=b41c3c25065982a14cffb36953ceaa43d5729c6c')) return 'SOUNI/lirili-larila.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTmIuRGKGrRQHFhcIKxzLz6cYtWCKhjZaidw&s')) return 'SOUNI/odindindindun_mixed.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHeZhX4WxwuahuNk0oKi70vJaK3l051A9RPw&s')) return 'SOUNI/giraffa celeste_mixed.mp3';
+      if (imageUrl.includes('https://images.cults3d.com/PFe_MB022TW1rqbbEJ-rMDxEI5U=/516x516/filters:no_upscale()/https://fbi.cults3d.com/uploaders/25344900/illustration-file/7fe58306-2cf8-4a0e-8e4f-eaf8509f064a/e16119a4ab4b4adca255d70e4f0fcb11H3000W3000_464_464.jpg')) return 'SOUNI/vacca saturnita_mixed.mp3';
+      if (imageUrl.includes('https://i1.sndcdn.com/artworks-4fPGk176hMQgdghK-zFMj5Q-t500x500.jpg')) return 'SOUNI/bombardiro-crocodilo.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnzJElfy2aN9oZYbixYs4x7cIb38hRgSncOA&s')) return 'SOUNI/chimpanzini-bananini.mp3';
+      if (imageUrl.includes('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3ZwF-s3LMQWCmRrhS1blv4v7XGECGXDcF-jjjMPM27Zq9QSg5AyNfWDWz8rzMRRe57Fc&usqp=CAU')) return 'SOUNI/bombombini-guzini.mp3';
+      return '';
+    }
+
+    function checkMatch() {
+      const [firstCard, secondCard] = flippedCards;
+      const firstImage = firstCard.getAttribute('data-image');
+      const secondImage = secondCard.getAttribute('data-image');
+      moves++;
+
+      if (firstImage === secondImage) {
+        firstCard.classList.add('matched');
+        secondCard.classList.add('matched');
+        matchedCards.push(firstCard, secondCard);
+        flippedCards = [];
+
+        if (matchedCards.length === document.querySelectorAll('.memory-card').length) {
+          updateRecord();
+          setTimeout(() => alert(`🎉 Bravo ${playerName}! Hai vinto in ${moves} mosse!`), 100);
+        }
+      } else {
+        setTimeout(() => {
+          firstCard.classList.remove('flipped');
+          secondCard.classList.remove('flipped');
+          flippedCards = [];
+        }, 1000);
+      }
+    }
+
+    function updateRecord() {
+      if (!playerRecord[playerName] || moves < playerRecord[playerName]) {
+        playerRecord[playerName] = moves;
+        localStorage.setItem('playerRecord', JSON.stringify(playerRecord));
+        document.getElementById('playerInfo').innerHTML = `🎮 Giocatore: <strong>${playerName}</strong> | Record: ${moves} mosse`;
+      }
+      updateLeaderboard();
+    }
+
+    function updateLeaderboard() {
+      const leaderboard = document.getElementById('leaderboard');
+      leaderboard.innerHTML = '';
+      const sorted = Object.entries(playerRecord).sort((a, b) => a[1] - b[1]).slice(0, 10);
+      sorted.forEach(([name, score]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${name}</span><span>${score} mosse</span>`;
+        leaderboard.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
